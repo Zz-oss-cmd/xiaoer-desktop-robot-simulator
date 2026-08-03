@@ -6,10 +6,9 @@ if errorlevel 1 set "PROJECT_PYTHON=%USERPROFILE%\.cache\codex-runtimes\codex-pr
 
 if not exist "%PROJECT_PYTHON%" if "%PROJECT_PYTHON%" NEQ "python" (
   echo Python 3.10 or newer was not found.
-  echo Install Python and enable the "Add Python to PATH" option.
   pause
   exit /b 1
 )
 
-"%PROJECT_PYTHON%" -m unittest discover -s tests -v
+"%PROJECT_PYTHON%" tcp_demo_client.py
 pause
