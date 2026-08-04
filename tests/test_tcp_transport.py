@@ -118,6 +118,13 @@ class TcpTransportTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             RobotTcpServer(poll_interval_s=0)
 
+    def test_stop_before_start_is_safe_and_idempotent(self) -> None:
+        server = RobotTcpServer(port=0)
+        server.stop()
+        server.stop()
+        with self.assertRaises(RuntimeError):
+            server.start()
+
 
 if __name__ == "__main__":
     unittest.main()

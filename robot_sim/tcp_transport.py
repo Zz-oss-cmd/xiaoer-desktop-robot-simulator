@@ -101,6 +101,7 @@ class RobotTcpServer(socketserver.ThreadingTCPServer):
         self._active_connections = 0
         self._thread: threading.Thread | None = None
         self.stopping = False
+        self._closed = False
         super().__init__((host, port), _RobotRequestHandler)
 
     @property
@@ -109,6 +110,8 @@ class RobotTcpServer(socketserver.ThreadingTCPServer):
         return str(host), int(port)
 
     def start(self) -> tuple[str, int]:
+        if self._closed:
+            raise RuntimeError("server cannot be restarted after stop")
         if self._thread and self._thread.is_alive():
             return self.address
         self.stopping = False
@@ -121,11 +124,15 @@ class RobotTcpServer(socketserver.ThreadingTCPServer):
         return self.address
 
     def stop(self) -> None:
+        if self._closed:
+            return
         self.stopping = True
-        self.shutdown()
+        if self._thread and self._thread.is_alive():
+            self.shutdown()
         self.server_close()
         if self._thread:
             self._thread.join(timeout=1.0)
+        self._closed = True
 
     def _increment(self, field: str, amount: int = 1) -> None:
         with self._stats_lock:
