@@ -46,6 +46,27 @@ class CommunicationServiceTests(unittest.TestCase):
         self.assertEqual(self.controller.queue_size, 1)
         self.assertEqual(self.service.gateway.stats.duplicate_frames, 1)
 
+    def test_invalid_payload_cannot_keep_link_online(self) -> None:
+        heartbeat = encode_frame(ProtocolFrame(Command.HEARTBEAT, 1))
+        invalid_sensor = encode_frame(
+            ProtocolFrame(Command.SENSOR_DATA, 2, b"invalid")
+        )
+        self.service.receive(heartbeat, 0)
+        self.assertEqual(self.service.receive(invalid_sensor, 250), 0)
+
+        self.service.poll(300)
+        self.assertFalse(self.service.online)
+        self.assertFalse(self.controller.sensors.communication_ok)
+
+    def test_duplicate_accepted_frame_still_proves_link_liveness(self) -> None:
+        heartbeat = encode_frame(ProtocolFrame(Command.HEARTBEAT, 1))
+        self.service.receive(heartbeat, 0)
+        self.service.receive(heartbeat, 250)
+
+        self.service.poll(300)
+        self.assertTrue(self.service.online)
+        self.assertTrue(self.controller.sensors.communication_ok)
+
     def test_silent_established_link_times_out_and_recovers(self) -> None:
         heartbeat = encode_frame(ProtocolFrame(Command.HEARTBEAT, 1))
         self.service.receive(heartbeat, 100)

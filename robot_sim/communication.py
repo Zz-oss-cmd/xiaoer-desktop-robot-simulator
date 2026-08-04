@@ -44,12 +44,18 @@ class CommunicationService:
         self.stats.receive_calls += 1
         frames = self.parser.feed(data, now_ms)
         self.stats.parsed_frames += len(frames)
-        if frames:
+        duplicates_before = self.gateway.stats.duplicate_frames
+        handled = sum(self.gateway.handle(frame) for frame in frames)
+        duplicate_received = self.gateway.stats.duplicate_frames > duplicates_before
+
+        # Only accepted requests (or a retransmitted accepted request) prove that
+        # the peer is alive. A well-framed packet with an invalid payload must not
+        # keep a broken or hostile link online.
+        if handled or duplicate_received:
             self._last_valid_frame_ms = now_ms
             self._link_timed_out = False
             self.controller.update_sensor("communication_ok", True)
 
-        handled = sum(self.gateway.handle(frame) for frame in frames)
         self.stats.handled_frames += handled
         return handled
 
