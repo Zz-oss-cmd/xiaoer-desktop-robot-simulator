@@ -17,6 +17,7 @@ def monotonic_ms() -> int:
 @dataclass(slots=True)
 class TcpServerStats:
     accepted_connections: int = 0
+    rejected_connections: int = 0
     received_bytes: int = 0
     handled_frames: int = 0
     status_frames_sent: int = 0
@@ -32,7 +33,6 @@ class _RobotRequestHandler(socketserver.BaseRequestHandler):
             link_timeout_ms=self.server.link_timeout_ms,
         )
         self.request.settimeout(self.server.poll_interval_s)
-        self.server._connection_opened()
 
     def handle(self) -> None:
         response_sequence = 0
@@ -86,15 +86,19 @@ class RobotTcpServer(socketserver.ThreadingTCPServer):
         link_timeout_ms: int = 3_000,
         receive_size: int = 256,
         poll_interval_s: float = 0.05,
+        max_connections: int = 8,
     ) -> None:
         if receive_size <= 0:
             raise ValueError("receive_size must be positive")
         if poll_interval_s <= 0:
             raise ValueError("poll_interval_s must be positive")
+        if max_connections <= 0:
+            raise ValueError("max_connections must be positive")
         self.controller = controller or RobotController()
         self.link_timeout_ms = link_timeout_ms
         self.receive_size = receive_size
         self.poll_interval_s = poll_interval_s
+        self.max_connections = max_connections
         self.stats = TcpServerStats()
         self._stats_lock = threading.Lock()
         self.controller_lock = threading.RLock()
@@ -138,10 +142,17 @@ class RobotTcpServer(socketserver.ThreadingTCPServer):
         with self._stats_lock:
             setattr(self.stats, field, getattr(self.stats, field) + amount)
 
-    def _connection_opened(self) -> None:
+    def verify_request(
+        self, request: socket.socket, client_address: tuple[str, int]
+    ) -> bool:
+        """Reserve a bounded client slot before a handler thread is created."""
         with self._stats_lock:
+            if self._active_connections >= self.max_connections:
+                self.stats.rejected_connections += 1
+                return False
             self._active_connections += 1
             self.stats.accepted_connections += 1
+            return True
 
     def _connection_closed(self) -> None:
         with self._stats_lock:

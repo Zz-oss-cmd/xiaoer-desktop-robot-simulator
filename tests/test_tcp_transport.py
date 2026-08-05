@@ -117,6 +117,37 @@ class TcpTransportTests(unittest.TestCase):
             RobotTcpServer(receive_size=0)
         with self.assertRaises(ValueError):
             RobotTcpServer(poll_interval_s=0)
+        with self.assertRaises(ValueError):
+            RobotTcpServer(max_connections=0)
+
+    def test_connection_limit_rejects_excess_client_without_breaking_active_one(self) -> None:
+        limited = RobotTcpServer(port=0, max_connections=1, poll_interval_s=0.01)
+        limited.start()
+        first = socket.create_connection(limited.address, timeout=1.0)
+        first.settimeout(0.5)
+        try:
+            self.assertTrue(
+                self.wait_until(lambda: limited.stats.accepted_connections == 1)
+            )
+            second = socket.create_connection(limited.address, timeout=1.0)
+            second.settimeout(0.5)
+            try:
+                self.assertTrue(
+                    self.wait_until(lambda: limited.stats.rejected_connections == 1)
+                )
+                try:
+                    rejected_data = second.recv(1)
+                except (ConnectionResetError, ConnectionAbortedError):
+                    rejected_data = b""
+                self.assertEqual(rejected_data, b"")
+            finally:
+                second.close()
+
+            first.sendall(encode_frame(ProtocolFrame(Command.HEARTBEAT, 1)))
+            self.assertEqual(len(self.receive_frames(first, 1)), 1)
+        finally:
+            first.close()
+            limited.stop()
 
     def test_stop_before_start_is_safe_and_idempotent(self) -> None:
         server = RobotTcpServer(port=0)
