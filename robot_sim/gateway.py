@@ -137,5 +137,4 @@ class ProtocolGateway:
         if action is ControlAction.RECOVER:
             self.controller.recover()
             return True
-        self.controller.add_task(ACTION_TO_TASK[action], priority)
-        return True
+        return self.controller.add_task(ACTION_TO_TASK[action], priority)

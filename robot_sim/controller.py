@@ -20,7 +20,13 @@ class RobotController:
     SENSOR_TIMEOUT_LIMIT = 3
     IDLE_SLEEP_SECONDS = 30.0
 
-    def __init__(self, on_event: EventCallback | None = None) -> None:
+    def __init__(
+        self,
+        on_event: EventCallback | None = None,
+        max_queue_size: int = 128,
+    ) -> None:
+        if max_queue_size <= 0:
+            raise ValueError("max_queue_size must be positive")
         self.state = RobotState.BOOT
         self.sensors = SensorData()
         self.x = 160.0
@@ -29,6 +35,7 @@ class RobotController:
         self.speed = 0.0
         self.current_task: RobotTask | None = None
         self._queue: list[tuple[int, int, RobotTask]] = []
+        self.max_queue_size = max_queue_size
         self._sequence = 0
         self._comm_failures = 0
         self._sensor_failures = 0
@@ -91,7 +98,13 @@ class RobotController:
         task_type: TaskType,
         priority: Priority = Priority.NORMAL,
         duration_s: float | None = None,
-    ) -> None:
+    ) -> bool:
+        if len(self._queue) >= self.max_queue_size:
+            self.log(
+                "WARN",
+                f"任务队列已满（{self.max_queue_size}），拒绝：{task_type.value}",
+            )
+            return False
         durations = {
             TaskType.GREET: 2.0,
             TaskType.PATROL: 7.0,
@@ -117,6 +130,7 @@ class RobotController:
                 self._queue, (int(interrupted.priority), self._sequence, interrupted)
             )
             self.log("TASK", f"高优先级任务抢占：暂停{interrupted.task_type.value}")
+        return True
 
     def update_sensor(self, name: str, value: float | bool) -> None:
         if not hasattr(self.sensors, name):

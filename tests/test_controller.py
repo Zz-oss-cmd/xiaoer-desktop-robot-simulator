@@ -30,6 +30,17 @@ class RobotControllerTests(unittest.TestCase):
         self.tick(0.1)
         self.assertEqual(self.robot.current_task.task_type, TaskType.GREET)
 
+    def test_task_queue_rejects_items_at_capacity(self) -> None:
+        robot = RobotController(max_queue_size=2)
+        self.assertTrue(robot.add_task(TaskType.GREET))
+        self.assertTrue(robot.add_task(TaskType.PATROL))
+        self.assertFalse(robot.add_task(TaskType.DANCE))
+        self.assertEqual(robot.queue_size, 2)
+
+    def test_invalid_queue_capacity_is_rejected(self) -> None:
+        with self.assertRaises(ValueError):
+            RobotController(max_queue_size=0)
+
     def test_emergency_task_preempts_current_task(self) -> None:
         self.robot.add_task(TaskType.PATROL, Priority.NORMAL)
         self.tick(0.1)
