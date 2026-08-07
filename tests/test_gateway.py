@@ -41,6 +41,22 @@ class GatewayTests(unittest.TestCase):
         self.assertEqual(self.controller.current_task.task_type, TaskType.PATROL)
         self.assertEqual(self.controller.current_task.priority, Priority.HIGH)
 
+    def test_full_task_queue_rejects_control_and_allows_retry(self) -> None:
+        controller = RobotController(max_queue_size=1)
+        gateway = ProtocolGateway(controller)
+        first = ProtocolFrame(Command.CONTROL, 1, bytes((ControlAction.GREET,)))
+        retryable = ProtocolFrame(Command.CONTROL, 2, bytes((ControlAction.PATROL,)))
+
+        self.assertTrue(gateway.handle(first))
+        self.assertFalse(gateway.handle(retryable))
+        self.assertEqual(controller.queue_size, 1)
+        self.assertEqual(gateway.stats.queue_rejections, 1)
+        self.assertEqual(gateway.stats.rejected_payloads, 1)
+
+        controller.tick(0.1)
+        self.assertTrue(gateway.handle(retryable))
+        self.assertEqual(controller.queue_size, 1)
+
     def test_recover_action_clears_fault(self) -> None:
         self.controller.inject_fault("temperature")
         self.controller.tick(0.1)

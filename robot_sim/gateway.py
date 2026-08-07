@@ -34,6 +34,7 @@ class GatewayStats:
     handled_frames: int = 0
     rejected_payloads: int = 0
     duplicate_frames: int = 0
+    queue_rejections: int = 0
 
 
 @dataclass(frozen=True, slots=True)
@@ -137,4 +138,7 @@ class ProtocolGateway:
         if action is ControlAction.RECOVER:
             self.controller.recover()
             return True
-        return self.controller.add_task(ACTION_TO_TASK[action], priority)
+        accepted = self.controller.add_task(ACTION_TO_TASK[action], priority)
+        if not accepted:
+            self.stats.queue_rejections += 1
+        return accepted
