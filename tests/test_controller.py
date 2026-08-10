@@ -41,6 +41,12 @@ class RobotControllerTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             RobotController(max_queue_size=0)
 
+    def test_text_command_reports_full_task_queue(self) -> None:
+        robot = RobotController(max_queue_size=1)
+        self.assertEqual(robot.command("你好"), "已接收任务：打招呼")
+        self.assertEqual(robot.command("巡逻"), "任务队列已满，请稍后重试")
+        self.assertEqual(robot.queue_size, 1)
+
     def test_emergency_task_preempts_current_task(self) -> None:
         self.robot.add_task(TaskType.PATROL, Priority.NORMAL)
         self.tick(0.1)

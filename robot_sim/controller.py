@@ -159,7 +159,8 @@ class RobotController:
         if task is None:
             self.log("WARN", f"无法识别指令：{text or '<空>'}")
             return "无法识别，请输入：你好、巡逻、跳舞、休息、讲笑话、状态、唤醒或复位"
-        self.add_task(task)
+        if not self.add_task(task):
+            return "任务队列已满，请稍后重试"
         return f"已接收任务：{task.value}"
 
     def inject_fault(self, fault: str) -> None:
