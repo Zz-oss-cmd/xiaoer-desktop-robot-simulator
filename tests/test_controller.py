@@ -47,6 +47,21 @@ class RobotControllerTests(unittest.TestCase):
         self.assertEqual(robot.command("巡逻"), "任务队列已满，请稍后重试")
         self.assertEqual(robot.queue_size, 1)
 
+    def test_invalid_task_duration_is_rejected_without_queue_mutation(self) -> None:
+        for duration in (0.0, -1.0, float("inf"), float("nan"), True):
+            with self.subTest(duration=duration):
+                with self.assertRaises(ValueError):
+                    self.robot.add_task(TaskType.GREET, duration_s=duration)
+                self.assertEqual(self.robot.queue_size, 0)
+
+    def test_invalid_tick_delta_is_rejected_without_state_mutation(self) -> None:
+        original_state = self.robot.state
+        for dt in (0.0, -0.1, float("inf"), float("nan"), True):
+            with self.subTest(dt=dt):
+                with self.assertRaises(ValueError):
+                    self.robot.tick(dt)
+                self.assertEqual(self.robot.state, original_state)
+
     def test_emergency_task_preempts_current_task(self) -> None:
         self.robot.add_task(TaskType.PATROL, Priority.NORMAL)
         self.tick(0.1)

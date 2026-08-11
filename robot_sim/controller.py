@@ -113,7 +113,10 @@ class RobotController:
             TaskType.TELL_JOKE: 3.0,
             TaskType.SHOW_STATUS: 2.0,
         }
-        task = RobotTask(task_type, priority, duration_s or durations[task_type])
+        duration = durations[task_type] if duration_s is None else duration_s
+        if isinstance(duration, bool) or not math.isfinite(duration) or duration <= 0:
+            raise ValueError("duration_s must be a positive finite number")
+        task = RobotTask(task_type, priority, duration)
         self._sequence += 1
         heapq.heappush(self._queue, (int(priority), self._sequence, task))
         self.log("TASK", f"任务入队：{task_type.value}，优先级 {priority.name}")
@@ -196,6 +199,8 @@ class RobotController:
             self.log("INFO", "传感器和通信状态已复位")
 
     def tick(self, dt: float) -> None:
+        if isinstance(dt, bool) or not math.isfinite(dt) or dt <= 0:
+            raise ValueError("dt must be a positive finite number")
         self._monitor_health()
         if self.state == RobotState.FAULT:
             self.speed = 0.0
