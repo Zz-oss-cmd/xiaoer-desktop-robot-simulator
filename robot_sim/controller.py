@@ -138,6 +138,25 @@ class RobotController:
     def update_sensor(self, name: str, value: float | bool) -> None:
         if not hasattr(self.sensors, name):
             raise ValueError(f"未知传感器字段：{name}")
+        boolean_fields = {"touched", "communication_ok", "sensor_ok"}
+        ranges = {
+            "distance_cm": (0.0, 5_000.0),
+            "battery_pct": (0.0, 100.0),
+            "temperature_c": (-40.0, 125.0),
+            "light_pct": (0.0, 100.0),
+        }
+        if name in boolean_fields:
+            if not isinstance(value, bool):
+                raise ValueError(f"{name} must be boolean")
+        else:
+            if (
+                isinstance(value, bool)
+                or not isinstance(value, (int, float))
+                or not math.isfinite(value)
+                or not ranges[name][0] <= value <= ranges[name][1]
+            ):
+                low, high = ranges[name]
+                raise ValueError(f"{name} must be a finite number in [{low}, {high}]")
         setattr(self.sensors, name, value)
         self._idle_seconds = 0.0
 

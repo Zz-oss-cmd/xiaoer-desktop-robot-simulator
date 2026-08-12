@@ -62,6 +62,38 @@ class RobotControllerTests(unittest.TestCase):
                     self.robot.tick(dt)
                 self.assertEqual(self.robot.state, original_state)
 
+    def test_invalid_sensor_values_are_rejected_without_mutation(self) -> None:
+        cases = (
+            ("distance_cm", -0.1),
+            ("battery_pct", 100.1),
+            ("temperature_c", float("nan")),
+            ("light_pct", float("inf")),
+            ("communication_ok", 1),
+            ("sensor_ok", "yes"),
+        )
+        for name, value in cases:
+            with self.subTest(name=name, value=value):
+                before = getattr(self.robot.sensors, name)
+                with self.assertRaises(ValueError):
+                    self.robot.update_sensor(name, value)
+                self.assertEqual(getattr(self.robot.sensors, name), before)
+
+    def test_sensor_boundary_values_are_accepted(self) -> None:
+        for name, value in (
+            ("distance_cm", 0.0),
+            ("distance_cm", 5_000.0),
+            ("battery_pct", 0.0),
+            ("battery_pct", 100.0),
+            ("temperature_c", -40.0),
+            ("temperature_c", 125.0),
+            ("light_pct", 0.0),
+            ("light_pct", 100.0),
+            ("touched", True),
+        ):
+            with self.subTest(name=name, value=value):
+                self.robot.update_sensor(name, value)
+                self.assertEqual(getattr(self.robot.sensors, name), value)
+
     def test_emergency_task_preempts_current_task(self) -> None:
         self.robot.add_task(TaskType.PATROL, Priority.NORMAL)
         self.tick(0.1)
