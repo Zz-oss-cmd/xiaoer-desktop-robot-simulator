@@ -94,6 +94,14 @@ class RobotControllerTests(unittest.TestCase):
                 self.robot.update_sensor(name, value)
                 self.assertEqual(getattr(self.robot.sensors, name), value)
 
+    def test_sensor_batch_update_is_atomic(self) -> None:
+        before_distance = self.robot.sensors.distance_cm
+        before_battery = self.robot.sensors.battery_pct
+        with self.assertRaises(ValueError):
+            self.robot.update_sensors(distance_cm=42.0, battery_pct=101.0)
+        self.assertEqual(self.robot.sensors.distance_cm, before_distance)
+        self.assertEqual(self.robot.sensors.battery_pct, before_battery)
+
     def test_emergency_task_preempts_current_task(self) -> None:
         self.robot.add_task(TaskType.PATROL, Priority.NORMAL)
         self.tick(0.1)

@@ -9,6 +9,14 @@ from .models import Priority, RobotState, RobotTask, SensorData, TaskType
 
 EventCallback = Callable[[str, str], None]
 
+BOOLEAN_SENSOR_FIELDS = frozenset({"touched", "communication_ok", "sensor_ok"})
+NUMERIC_SENSOR_RANGES = {
+    "distance_cm": (0.0, 5_000.0),
+    "battery_pct": (0.0, 100.0),
+    "temperature_c": (-40.0, 125.0),
+    "light_pct": (0.0, 100.0),
+}
+
 
 class RobotController:
     """Deterministic robot controller independent from the GUI."""
@@ -136,29 +144,31 @@ class RobotController:
         return True
 
     def update_sensor(self, name: str, value: float | bool) -> None:
-        if not hasattr(self.sensors, name):
-            raise ValueError(f"未知传感器字段：{name}")
-        boolean_fields = {"touched", "communication_ok", "sensor_ok"}
-        ranges = {
-            "distance_cm": (0.0, 5_000.0),
-            "battery_pct": (0.0, 100.0),
-            "temperature_c": (-40.0, 125.0),
-            "light_pct": (0.0, 100.0),
-        }
-        if name in boolean_fields:
+        self.update_sensors(**{name: value})
+
+    def update_sensors(self, **values: float | bool) -> None:
+        """Validate a sensor batch before applying any value atomically."""
+        for name, value in values.items():
+            self._validate_sensor(name, value)
+        for name, value in values.items():
+            setattr(self.sensors, name, value)
+        self._idle_seconds = 0.0
+
+    def _validate_sensor(self, name: str, value: float | bool) -> None:
+        if name in BOOLEAN_SENSOR_FIELDS:
             if not isinstance(value, bool):
                 raise ValueError(f"{name} must be boolean")
-        else:
-            if (
-                isinstance(value, bool)
-                or not isinstance(value, (int, float))
-                or not math.isfinite(value)
-                or not ranges[name][0] <= value <= ranges[name][1]
-            ):
-                low, high = ranges[name]
-                raise ValueError(f"{name} must be a finite number in [{low}, {high}]")
-        setattr(self.sensors, name, value)
-        self._idle_seconds = 0.0
+            return
+        if name not in NUMERIC_SENSOR_RANGES:
+            raise ValueError(f"未知传感器字段：{name}")
+        low, high = NUMERIC_SENSOR_RANGES[name]
+        if (
+            isinstance(value, bool)
+            or not isinstance(value, (int, float))
+            or not math.isfinite(value)
+            or not low <= value <= high
+        ):
+            raise ValueError(f"{name} must be a finite number in [{low}, {high}]")
 
     def command(self, text: str) -> str:
         text = text.strip().lower()

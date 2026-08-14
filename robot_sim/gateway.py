@@ -116,14 +116,16 @@ class ProtocolGateway:
         if len(payload) != self.SENSOR_PAYLOAD_SIZE:
             return False
         distance, battery, temperature, light = struct.unpack(self.SENSOR_FORMAT, payload)
-        if distance > 50_000 or battery > 1_000 or not -400 <= temperature <= 1_250 or light > 1_000:
+        try:
+            self.controller.update_sensors(
+                distance_cm=distance / 10.0,
+                battery_pct=battery / 10.0,
+                temperature_c=temperature / 10.0,
+                light_pct=light / 10.0,
+                sensor_ok=True,
+            )
+        except ValueError:
             return False
-
-        self.controller.update_sensor("distance_cm", distance / 10.0)
-        self.controller.update_sensor("battery_pct", battery / 10.0)
-        self.controller.update_sensor("temperature_c", temperature / 10.0)
-        self.controller.update_sensor("light_pct", light / 10.0)
-        self.controller.update_sensor("sensor_ok", True)
         return True
 
     def _handle_control(self, payload: bytes) -> bool:
