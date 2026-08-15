@@ -114,6 +114,8 @@ class TcpTransportTests(unittest.TestCase):
 
     def test_invalid_server_configuration_is_rejected(self) -> None:
         with self.assertRaises(ValueError):
+            RobotTcpServer(link_timeout_ms=0)
+        with self.assertRaises(ValueError):
             RobotTcpServer(receive_size=0)
         with self.assertRaises(ValueError):
             RobotTcpServer(poll_interval_s=0)

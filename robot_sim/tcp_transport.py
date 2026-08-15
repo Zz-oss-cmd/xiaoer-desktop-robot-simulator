@@ -88,6 +88,8 @@ class RobotTcpServer(socketserver.ThreadingTCPServer):
         poll_interval_s: float = 0.05,
         max_connections: int = 8,
     ) -> None:
+        if link_timeout_ms <= 0:
+            raise ValueError("link_timeout_ms must be positive")
         if receive_size <= 0:
             raise ValueError("receive_size must be positive")
         if poll_interval_s <= 0:
