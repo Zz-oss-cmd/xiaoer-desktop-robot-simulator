@@ -1,6 +1,7 @@
 """Software-only desktop companion robot simulator."""
 
 from .communication import CommunicationService
+from .config import VirtualDeviceConfig
 from .controller import RobotController
 from .gateway import ControlAction, DeviceStatus, ProtocolGateway, decode_status_frame
 from .models import RobotState, SensorData, TaskType
@@ -20,6 +21,7 @@ __all__ = [
     "SensorData",
     "StreamParser",
     "TaskType",
+    "VirtualDeviceConfig",
     "crc16_modbus",
     "decode_status_frame",
     "encode_frame",

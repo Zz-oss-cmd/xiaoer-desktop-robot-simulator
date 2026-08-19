@@ -1,0 +1,9 @@
+{
+  "host": "127.0.0.1",
+  "port": 8765,
+  "link_timeout_ms": 3000,
+  "receive_size": 256,
+  "poll_interval_s": 0.05,
+  "max_connections": 8,
+  "max_queue_size": 128
+}
