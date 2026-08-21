@@ -23,7 +23,8 @@ Tkinter 实现机器人动画、行为状态机、优先级任务队列、虚拟
 - 自定义二进制通信协议、CRC16、流式拆包/粘包解析和错误统计
 - 协议网关：传感器更新、远程任务控制、重复序号过滤、队列拒绝统计和状态回传
 - TCP虚拟设备与演示客户端，可进行无硬件真实Socket联调
-- 60 项自动化测试（控制器、协议、网关、通信服务、TCP及10000帧压力测试）
+- JSON部署配置，启动前校验监听参数、通信超时、连接上限和任务队列容量
+- 68 项自动化测试（配置、控制器、协议、网关、通信服务、TCP及10000帧压力测试）
 - GitHub Actions 在 Windows/Linux 和多个 Python 版本上持续验证
 
 ## 通信协议
@@ -54,6 +55,18 @@ AA 55 | Version | Command | Sequence | PayloadLength | Payload | CRC16-Modbus
 
 服务端使用互斥锁串行化网络线程对控制器的访问，并通过并发客户端测试验证多连接
 同时下发任务时不会破坏任务队列；默认最多允许8个并发连接，超额连接会被拒绝并计数。
+
+## JSON配置
+
+虚拟设备支持使用经过校验的 JSON 文件管理部署参数。项目提供
+[`config.example.json`](config.example.json)，可以直接启动：
+
+```bash
+python virtual_device.py --config config.example.json
+```
+
+`--host` 和 `--port` 可覆盖配置文件中的监听地址与端口。字段说明和异常处理规则见
+[`docs/configuration.md`](docs/configuration.md)。
 
 ## 架构
 
@@ -122,6 +135,7 @@ desktop_robot_simulator/
 ├─ main.py
 ├─ virtual_device.py
 ├─ tcp_demo_client.py
+├─ config.example.json
 ├─ run_robot.bat
 ├─ run_tests.bat
 ├─ run_virtual_device.bat
@@ -135,18 +149,22 @@ desktop_robot_simulator/
 │  ├─ protocol.py
 │  ├─ gateway.py
 │  ├─ communication.py
+│  ├─ config.py
 │  ├─ tcp_transport.py
 │  ├─ controller.py
 │  └─ ui.py
 ├─ docs/
+│  ├─ configuration.md
 │  ├─ protocol.md
 │  └─ tcp_demo.md
 └─ tests/
    ├─ test_communication.py
+   ├─ test_config.py
    ├─ test_controller.py
+   ├─ test_gateway.py
    ├─ test_protocol.py
    ├─ test_tcp_transport.py
-   └─ test_gateway.py
+   └─ test_virtual_device_e2e.py
 ```
 
 ## 设计说明
@@ -165,7 +183,7 @@ DMA 每次产生不同长度数据的情况。解析器只输出 CRC、版本、
 ## 后续扩展
 
 - 使用 SQLite 保存历史运行记录
-- 添加 TCP/UDP 虚拟设备通信
-- 使用 JSON 配置任务和传感器阈值
+- 添加 UDP 虚拟设备通信
+- 扩展 JSON 配置以支持任务和传感器阈值
 - 增加语音识别或本地自然语言命令
 - 使用 PyInstaller 打包为 Windows EXE
